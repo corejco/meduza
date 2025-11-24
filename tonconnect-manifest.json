@@ -1,8 +1,6 @@
 {
   "name": "Meduza Metadata Updater",
-  "url": "https://corejco.github.io/meduza/",
-  "iconUrl": "https://wjm4lsfc7cebmh6zmcghc7dx2eemdpl6avhbeamx5nriixem4piq.arweave.net/slnFyKL4iBYf2WCMcXx30QjBvX4FThIBl-tihFyM49E/logo.png",
-  "termsOfUseUrl": "https://corejco.github.io/meduza/terms.html",
-  "privacyPolicyUrl": "https://corejco.github.io/meduza/privacy.html"
+  "icon": "https://wjm4lsfc7cebmh6zmcghc7dx2eemdpl6avhbeamx5nriixem4piq.arweave.net/slnFyKL4iBYf2WCMcXx30QjBvX4FThIBl-tihFyM49E/logo.png",
+  "url": "metadata.html"
 }
 
