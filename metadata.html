@@ -1,70 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <title>Update Jetton Metadata</title>
-  <script src="https://cdn.jsdelivr.net/npm/tonweb@0.21.0/dist/tonweb.min.js"></script>
-  <script src="https://unpkg.com/@tonconnect/sdk@1.1.0/dist/tonconnect-sdk.umd.js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 2em; }
-    button { margin: 0.5em 0; padding: 0.5em 1em; font-size: 1em; }
-  </style>
+  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
 </head>
 <body>
   <h1>Обновление Jetton Metadata</h1>
+
   <button id="connect">Подключить Tonkeeper</button>
   <button id="update" disabled>Обновить Metadata</button>
 
   <script>
+    const manifestUrl = "https://corejco.github.io/meduza/tonconnect-manifest.json";
+    const connector = new TONCONNECT.TonConnect({ manifestUrl });
+
     const minterAddress = "EQCpP5G76znZMaCeJ5iZH6Ugi8GOZNWdN0RLmW9Yl346wqDa";
     const newMetadataURI = "https://arweave.net/YUPEZBI7PHWn0uNHVqeLpdiIjviaS-iFB9f0yiiLspM";
 
-    let wallet = null;
-
-    // Инициализация TonConnect
-    const connector = new TonConnectSDK.TonConnect({
-      manifestUrl: window.location.origin + '/tonconnect-manifest.json'
-    });
-
     document.getElementById("connect").onclick = async () => {
-      try {
-        // Подключаем Tonkeeper через TonConnect
-        const connectedWallet = await connector.connect();
-        wallet = connectedWallet.account;
-        alert("Кошелек подключен: " + wallet.address);
-        document.getElementById("update").disabled = false;
-      } catch (e) {
-        console.error(e);
-        alert("Ошибка подключения Tonkeeper");
-      }
+      const walletsList = await connector.getWallets();
+
+      connector.connectWallet(walletsList[0]);
     };
 
-    document.getElementById("update").onclick = async () => {
-      if (!wallet) return;
-
-      try {
-        const tonweb = new TonWeb(new TonWeb.HttpProvider("https://toncenter.com/api/v2/jsonRPC"));
-        const minter = new TonWeb.JettonMinter(tonweb.provider, minterAddress);
-
-        // Формируем транзакцию
-        const txMessage = minter.methods.changeJettonContent(newMetadataURI).toMessage();
-
-        // Отправка через TonConnect
-        const txResult = await connector.sendTransaction({
-          messages: [
-            {
-              address: minterAddress,
-              amount: TonWeb.utils.toNano("0.05").toString(),
-              payload: txMessage.toBoc().toString("base64")
-            }
-          ]
-        });
-
-        alert("Транзакция отправлена! Tx ID: " + txResult.id);
-      } catch (e) {
-        console.error(e);
-        alert("Ошибка при отправке транзакции");
+    connector.onStatusChange(wallet => {
+      if (wallet) {
+        alert("Кошелек подключён!");
+        document.getElementById("update").disabled = false;
       }
+    });
+
+    document.getElementById("update").onclick = async () => {
+      const payload = {
+        "jetton_content": {
+          "uri": newMetadataURI
+        }
+      };
+
+      await connector.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [{
+          address: minterAddress,
+          amount: "50000000",
+          payload: btoa(JSON.stringify(payload))
+        }]
+      });
+
+      alert("Транзакция отправлена!");
     };
   </script>
 </body>
