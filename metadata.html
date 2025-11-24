@@ -2,52 +2,94 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Update Jetton Metadata</title>
-  <script src="https://unpkg.com/@tonconnect/sdk@latest/dist/tonconnect-sdk.min.js"></script>
-</head>
-<body>
-  <h1>Обновление Jetton Metadata</h1>
+  <title>Meduza Jetton Metadata Updater</title>
 
-  <button id="connect">Подключить Tonkeeper</button>
-  <button id="update" disabled>Обновить Metadata</button>
+  <!-- TonConnect 2.0 -->
+  <script src="https://unpkg.com/@tonconnect/sdk@2.2.0/dist/tonconnect-sdk.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 2em;
+      max-width: 600px;
+    }
+    button {
+      padding: 12px 18px;
+      font-size: 16px;
+      margin-top: 10px;
+      width: 100%;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f3f3f3;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Meduza Jetton — Обновление Metadata</h2>
+
+  <button id="connectBtn">Подключить Tonkeeper</button>
+  <button id="updateBtn" disabled>Обновить Metadata</button>
+
+  <div id="status">Кошелек не подключён.</div>
 
   <script>
-    const manifestUrl = "https://corejco.github.io/meduza/tonconnect-manifest.json";
-    const connector = new TONCONNECT.TonConnect({ manifestUrl });
-
     const minterAddress = "EQCpP5G76znZMaCeJ5iZH6Ugi8GOZNWdN0RLmW9Yl346wqDa";
     const newMetadataURI = "https://arweave.net/YUPEZBI7PHWn0uNHVqeLpdiIjviaS-iFB9f0yiiLspM";
 
-    document.getElementById("connect").onclick = async () => {
-      const walletsList = await connector.getWallets();
-
-      connector.connectWallet(walletsList[0]);
-    };
-
-    connector.onStatusChange(wallet => {
-      if (wallet) {
-        alert("Кошелек подключён!");
-        document.getElementById("update").disabled = false;
-      }
+    // Инициализация TonConnect v2
+    const connector = new TON_CONNECT.TonConnect({
+      manifestUrl: window.location.origin + "/tonconnect-manifest.json"
     });
 
-    document.getElementById("update").onclick = async () => {
-      const payload = {
-        "jetton_content": {
-          "uri": newMetadataURI
-        }
-      };
+    const connectBtn = document.getElementById("connectBtn");
+    const updateBtn = document.getElementById("updateBtn");
+    const status = document.getElementById("status");
 
-      await connector.sendTransaction({
-        validUntil: Math.floor(Date.now() / 1000) + 300,
-        messages: [{
-          address: minterAddress,
-          amount: "50000000",
-          payload: btoa(JSON.stringify(payload))
-        }]
+    // Обработка подключения
+    connectBtn.onclick = async () => {
+      try {
+        await connector.connectWallet();
+        const wallet = connector.wallet;
+        status.textContent = "Подключено: " + wallet.account.address;
+        updateBtn.disabled = false;
+      } catch (err) {
+        console.error(err);
+        alert("Ошибка подключения Tonkeeper");
+      }
+    };
+
+    // Отправка транзакции
+    updateBtn.onclick = async () => {
+      if (!connector.wallet) return;
+
+      const payload = TON_CONNECT.concatTonCell({
+        jetton_content: newMetadataURI
       });
 
-      alert("Транзакция отправлена!");
+      const tx = {
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [
+          {
+            address: minterAddress,
+            amount: "50000000", // 0.05 TON
+            payload
+          }
+        ]
+      };
+
+      try {
+        await connector.sendTransaction(tx);
+        alert("Транзакция отправлена!");
+      } catch (err) {
+        console.error(err);
+        alert("Ошибка отправки транзакции");
+      }
     };
   </script>
 </body>
