@@ -1,94 +1,65 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Meduza Jetton Metadata Updater</title>
-
-  <!-- TonConnect 2.0 -->
-  <script src="https://unpkg.com/@tonconnect/sdk@2.2.0/dist/tonconnect-sdk.min.js"></script>
-
+  <title>Update Jetton Metadata</title>
+  <script src="https://cdn.jsdelivr.net/npm/tonweb@0.21.0/dist/tonweb.min.js"></script>
+  <script src="https://unpkg.com/@tonconnect/sdk@1.1.0/dist/tonconnect-sdk.umd.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 2em;
-      max-width: 600px;
-    }
-    button {
-      padding: 12px 18px;
-      font-size: 16px;
-      margin-top: 10px;
-      width: 100%;
-      cursor: pointer;
-    }
-    #status {
-      margin-top: 15px;
-      padding: 10px;
-      background: #f3f3f3;
-      border-radius: 6px;
-      font-size: 14px;
-    }
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    button { margin: 0.5em 0; padding: 0.5em 1em; font-size: 1em; }
   </style>
 </head>
-
 <body>
-  <h2>Meduza Jetton — Обновление Metadata</h2>
-
-  <button id="connectBtn">Подключить Tonkeeper</button>
-  <button id="updateBtn" disabled>Обновить Metadata</button>
-
-  <div id="status">Кошелек не подключён.</div>
+  <h1>Обновление Jetton Metadata</h1>
+  <button id="connect">Подключить Tonkeeper</button>
+  <button id="update" disabled>Обновить Metadata</button>
 
   <script>
     const minterAddress = "EQCpP5G76znZMaCeJ5iZH6Ugi8GOZNWdN0RLmW9Yl346wqDa";
     const newMetadataURI = "https://arweave.net/YUPEZBI7PHWn0uNHVqeLpdiIjviaS-iFB9f0yiiLspM";
 
-    // Инициализация TonConnect v2
-    const connector = new TON_CONNECT.TonConnect({
-      manifestUrl: window.location.origin + "/tonconnect-manifest.json"
+    let wallet = null;
+
+    const connector = new TonConnectSDK.TonConnect({
+      manifestUrl: window.location.origin + '/tonconnect-manifest.json'
     });
 
-    const connectBtn = document.getElementById("connectBtn");
-    const updateBtn = document.getElementById("updateBtn");
-    const status = document.getElementById("status");
-
-    // Обработка подключения
-    connectBtn.onclick = async () => {
+    document.getElementById("connect").onclick = async () => {
       try {
-        await connector.connectWallet();
-        const wallet = connector.wallet;
-        status.textContent = "Подключено: " + wallet.account.address;
-        updateBtn.disabled = false;
-      } catch (err) {
-        console.error(err);
+        const connectedWallet = await connector.connect();
+        wallet = connectedWallet.account;
+        alert("Кошелек подключен: " + wallet.address);
+        document.getElementById("update").disabled = false;
+      } catch (e) {
         alert("Ошибка подключения Tonkeeper");
+        console.error(e);
       }
     };
 
-    // Отправка транзакции
-    updateBtn.onclick = async () => {
-      if (!connector.wallet) return;
-
-      const payload = TON_CONNECT.concatTonCell({
-        jetton_content: newMetadataURI
-      });
-
-      const tx = {
-        validUntil: Math.floor(Date.now() / 1000) + 300,
-        messages: [
-          {
-            address: minterAddress,
-            amount: "50000000", // 0.05 TON
-            payload
-          }
-        ]
-      };
+    document.getElementById("update").onclick = async () => {
+      if (!wallet) return;
 
       try {
-        await connector.sendTransaction(tx);
+        const tonweb = new TonWeb(new TonWeb.HttpProvider("https://toncenter.com/api/v2/jsonRPC"));
+        const minter = new TonWeb.JettonMinter(tonweb.provider, minterAddress);
+
+        const txMessage = minter.methods.changeJettonContent(newMetadataURI).toMessage();
+
+        const txResult = await connector.sendTransaction({
+          messages: [
+            {
+              address: minterAddress,
+              amount: TonWeb.utils.toNano("0.05").toString(),
+              payload: txMessage.toBoc().toString("base64")
+            }
+          ]
+        });
+
         alert("Транзакция отправлена!");
-      } catch (err) {
-        console.error(err);
-        alert("Ошибка отправки транзакции");
+      } catch (e) {
+        alert("Ошибка при отправке транзакции");
+        console.error(e);
       }
     };
   </script>
